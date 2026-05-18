@@ -22,19 +22,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseConfigurationItems(params: unknown): ConfigurationItem[] {
-	if (!isRecord(params) || !Array.isArray(params.items)) return [];
+	if (!isRecord(params) || !Array.isArray(params["items"])) return [];
 	const items: ConfigurationItem[] = [];
-	for (const item of params.items) {
+	for (const item of params["items"]) {
 		if (!isRecord(item)) continue;
-		items.push({ section: typeof item.section === "string" ? item.section : undefined });
+		const section = item["section"];
+		items.push(section === undefined || typeof section !== "string" ? {} : { section });
 	}
 	return items;
 }
 
 function parseDiagnosticsParams(params: unknown): DiagnosticsParams | null {
-	if (!isRecord(params) || typeof params.uri !== "string") return null;
-	const diagnostics = Array.isArray(params.diagnostics) ? (params.diagnostics as Diagnostic[]) : [];
-	return { uri: params.uri, diagnostics };
+	if (!isRecord(params) || typeof params["uri"] !== "string") return null;
+	const diagnostics = Array.isArray(params["diagnostics"]) ? params["diagnostics"].filter(isDiagnostic) : [];
+	return { uri: params["uri"], diagnostics };
 }
 
 export class LspClientTransport {
@@ -62,12 +63,12 @@ export class LspClientTransport {
 			...process.env,
 			...this.server.env,
 		};
-		const pathValue = process.platform === "win32" ? (env.PATH ?? env.Path ?? "") : (env.PATH ?? "");
+		const pathValue = process.platform === "win32" ? (env["PATH"] ?? env["Path"] ?? "") : (env["PATH"] ?? "");
 		const spawnPath = [pathValue, ...getAdditionalPathBases(this.root)].filter(Boolean).join(delimiter);
-		if (process.platform === "win32" && env.Path !== undefined) {
-			env.Path = spawnPath;
+		if (process.platform === "win32" && env["Path"] !== undefined) {
+			env["Path"] = spawnPath;
 		}
-		env.PATH = spawnPath;
+		env["PATH"] = spawnPath;
 
 		this.proc = spawnProcess(this.server.command, {
 			cwd: this.root,
@@ -269,4 +270,16 @@ export class LspClientTransport {
 	getStoredDiagnostics(uri: string): Diagnostic[] {
 		return this.diagnosticsStore.get(uri) ?? [];
 	}
+}
+
+function isDiagnostic(value: unknown): value is Diagnostic {
+	return isRecord(value) && isRange(value["range"]) && typeof value["message"] === "string";
+}
+
+function isRange(value: unknown): value is Diagnostic["range"] {
+	return isRecord(value) && isPosition(value["start"]) && isPosition(value["end"]);
+}
+
+function isPosition(value: unknown): value is Diagnostic["range"]["start"] {
+	return isRecord(value) && typeof value["line"] === "number" && typeof value["character"] === "number";
 }

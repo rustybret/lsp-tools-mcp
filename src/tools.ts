@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 
-import { isDirectoryPath, withLspClient } from "./lsp/client-wrapper.js";
+import { isDirectoryPath, type WithLspClientOptions, withLspClient } from "./lsp/client-wrapper.js";
 import { DEFAULT_MAX_DIAGNOSTICS, DEFAULT_MAX_REFERENCES, DEFAULT_MAX_SYMBOLS } from "./lsp/constants.js";
 import { aggregateDiagnosticsForDirectory } from "./lsp/directory-diagnostics.js";
 import {
@@ -171,9 +171,13 @@ function isSeverityFilter(value: unknown): value is SeverityFilter {
 }
 
 function severityFilter(params: Record<string, unknown>): SeverityFilter {
-	const value = params.severity;
+	const value = params["severity"];
 	if (isSeverityFilter(value)) return value;
 	return "all";
+}
+
+function clientOptions(signal: AbortSignal | undefined): WithLspClientOptions {
+	return signal === undefined ? {} : { signal };
 }
 
 function asDiagnosticArray(result: { items?: Diagnostic[] } | Diagnostic[] | null | undefined): Diagnostic[] {
@@ -248,9 +252,12 @@ export async function executeLspDiagnostics(
 			return text(output, details);
 		}
 
-		const result = await withLspClient(filePath, async (client) => client.diagnostics(filePath), "diagnostics", {
-			signal,
-		});
+		const result = await withLspClient(
+			filePath,
+			async (client) => client.diagnostics(filePath),
+			"diagnostics",
+			clientOptions(signal),
+		);
 		const diagnostics = filterDiagnosticsBySeverity(asDiagnosticArray(result), severity);
 		const total = diagnostics.length;
 		const truncated = total > DEFAULT_MAX_DIAGNOSTICS;
@@ -303,7 +310,7 @@ async function executeLspGotoDefinition(
 			filePath,
 			async (client) => client.definition(filePath, line, character),
 			"definition",
-			{ signal },
+			clientOptions(signal),
 		);
 		const locations = !result ? [] : Array.isArray(result) ? result : [result];
 		const details: LspGotoDefinitionDetails = { filePath, line, character, locations };
@@ -339,7 +346,7 @@ async function executeLspFindReferences(
 			filePath,
 			async (client) => client.references(filePath, line, character, includeDeclaration),
 			"references",
-			{ signal },
+			clientOptions(signal),
 		);
 		const references = Array.isArray(result) ? result : [];
 		const total = references.length;
@@ -391,7 +398,6 @@ async function executeLspSymbols(params: Record<string, unknown>, signal?: Abort
 				return text(message, {
 					filePath,
 					scope,
-					query: undefined,
 					symbols: [],
 					totalSymbols: 0,
 					truncated: false,
@@ -404,7 +410,7 @@ async function executeLspSymbols(params: Record<string, unknown>, signal?: Abort
 				filePath,
 				async (client) => client.workspaceSymbols(query),
 				"workspaceSymbols",
-				{ signal },
+				clientOptions(signal),
 			);
 			return formatSymbolsResult(filePath, scope, symbols, limit, query);
 		}
@@ -413,21 +419,22 @@ async function executeLspSymbols(params: Record<string, unknown>, signal?: Abort
 			filePath,
 			async (client) => client.documentSymbols(filePath),
 			"documentSymbols",
-			{ signal },
+			clientOptions(signal),
 		);
 		return formatSymbolsResult(filePath, scope, symbols, limit);
 	} catch (error) {
 		const message = handleMissingDependencyError(error);
 		if (message) {
+			const query = optionalString(params, "query");
 			return text(message, {
 				filePath,
 				scope,
-				query: optionalString(params, "query"),
 				symbols: [],
 				totalSymbols: 0,
 				truncated: false,
 				error: message,
 				errorKind: "missing_dependency",
+				...(query === undefined ? {} : { query }),
 			});
 		}
 		throw error;
@@ -444,7 +451,14 @@ function formatSymbolsResult(
 	const total = symbols.length;
 	const truncated = total > limit;
 	const limited = truncated ? symbols.slice(0, limit) : symbols;
-	const details: LspSymbolsDetails = { filePath, scope, query, symbols, totalSymbols: total, truncated };
+	const details: LspSymbolsDetails = {
+		filePath,
+		scope,
+		symbols,
+		totalSymbols: total,
+		truncated,
+		...(query === undefined ? {} : { query }),
+	};
 	if (total === 0) return text("No symbols found", details);
 
 	const lines: string[] = [];
@@ -471,7 +485,7 @@ async function executeLspPrepareRename(
 			filePath,
 			async (client) => client.prepareRename(filePath, line, character),
 			"prepareRename",
-			{ signal },
+			clientOptions(signal),
 		);
 		const details: LspPrepareRenameDetails = { filePath, line, character, result };
 		return text(formatPrepareRenameResult(result), details);
@@ -502,7 +516,7 @@ async function executeLspRename(params: Record<string, unknown>, signal?: AbortS
 			filePath,
 			async (client) => client.rename(filePath, line, character, newName),
 			"rename",
-			{ signal },
+			clientOptions(signal),
 		);
 		const apply = applyWorkspaceEdit(edit);
 		const details: LspRenameDetails = { filePath, line, character, newName, apply, edit };

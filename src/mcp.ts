@@ -42,11 +42,12 @@ export async function handleLspMcpRequest(input: unknown): Promise<JsonRpcRespon
 		return errorResponse(null, -32600, "Invalid Request");
 	}
 
-	const id = jsonRpcId(input.id);
-	if (input.method === "notifications/initialized") return undefined;
-	if (input.method === "ping") return successResponse(id, {});
-	if (input.method === "initialize") {
-		const protocolVersion = requestedProtocolVersion(input.params);
+	const id = jsonRpcId(input["id"]);
+	const method = input["method"];
+	if (method === "notifications/initialized") return undefined;
+	if (method === "ping") return successResponse(id, {});
+	if (method === "initialize") {
+		const protocolVersion = requestedProtocolVersion(input["params"]);
 		return successResponse(id, {
 			capabilities: { tools: { listChanged: false } },
 			serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
@@ -54,15 +55,15 @@ export async function handleLspMcpRequest(input: unknown): Promise<JsonRpcRespon
 		});
 	}
 
-	if (input.method === "tools/list") {
+	if (method === "tools/list") {
 		return successResponse(id, { tools: LSP_MCP_TOOLS.map(describeTool) });
 	}
 
-	if (input.method === "tools/call") {
-		return handleToolCall(id, input.params);
+	if (method === "tools/call") {
+		return handleToolCall(id, input["params"]);
 	}
 
-	return errorResponse(id, -32601, `Method not found: ${String(input.method)}`);
+	return errorResponse(id, -32601, `Method not found: ${String(method)}`);
 }
 
 export async function runMcpStdioServer(
@@ -86,12 +87,12 @@ export async function runMcpStdioServer(
 }
 
 async function handleToolCall(id: JsonRpcId, params: unknown): Promise<JsonRpcResponse> {
-	if (!isRecord(params) || typeof params.name !== "string") {
+	if (!isRecord(params) || typeof params["name"] !== "string") {
 		return errorResponse(id, -32602, "tools/call requires params.name");
 	}
 
 	try {
-		const result = await executeLspTool(params.name, coerceToolArguments(params.arguments));
+		const result = await executeLspTool(params["name"], coerceToolArguments(params["arguments"]));
 		return successResponse(id, {
 			content: result.content,
 			isError: result.isError ?? false,
@@ -123,8 +124,8 @@ function errorResponse(id: JsonRpcId, code: number, message: string, data?: unkn
 }
 
 function requestedProtocolVersion(params: unknown): string {
-	if (!isRecord(params) || typeof params.protocolVersion !== "string") return "2024-11-05";
-	return params.protocolVersion;
+	if (!isRecord(params) || typeof params["protocolVersion"] !== "string") return "2024-11-05";
+	return params["protocolVersion"];
 }
 
 function jsonRpcId(value: unknown): JsonRpcId {

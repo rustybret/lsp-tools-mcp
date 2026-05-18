@@ -166,7 +166,7 @@ export class JsonRpcConnection {
 			return;
 		}
 
-		if (typeof parsed.method !== "string") {
+		if (typeof parsed["method"] !== "string") {
 			const id = getMessageId(parsed) ?? null;
 			void this.writeError(id, INVALID_REQUEST, "Invalid JSON-RPC method").catch((error) =>
 				this.emitError(toError(error)),
@@ -179,7 +179,7 @@ export class JsonRpcConnection {
 			return;
 		}
 
-		this.handleNotification(parsed.method, parsed.params);
+		this.handleNotification(parsed["method"], parsed["params"]);
 	}
 
 	private handleResponse(message: Record<string, unknown>): void {
@@ -190,11 +190,11 @@ export class JsonRpcConnection {
 		this.pendingRequests.delete(String(id));
 
 		if ("error" in message) {
-			pending.reject(jsonRpcErrorToError(message.error));
+			pending.reject(jsonRpcErrorToError(message["error"]));
 			return;
 		}
 
-		pending.resolve(message.result);
+		pending.resolve(message["result"]);
 	}
 
 	private handleNotification(method: string, params: unknown): void {
@@ -216,7 +216,7 @@ export class JsonRpcConnection {
 			return;
 		}
 
-		const method = typeof message.method === "string" ? message.method : "";
+		const method = typeof message["method"] === "string" ? message["method"] : "";
 		const handler = this.requestHandlers.get(method);
 		if (!handler) {
 			void this.writeError(id, METHOD_NOT_FOUND, `Method not found: ${method}`).catch((error) =>
@@ -226,7 +226,7 @@ export class JsonRpcConnection {
 		}
 
 		Promise.resolve()
-			.then(() => handler(message.params))
+			.then(() => handler(message["params"]))
 			.then(
 				(result) => this.writeMessage({ jsonrpc: "2.0", id, result }),
 				(error) => this.writeError(id, INTERNAL_ERROR, toError(error).message),
@@ -276,17 +276,17 @@ function isJsonRpcObject(value: unknown): value is Record<string, unknown> {
 }
 
 function getMessageId(message: Record<string, unknown>): JsonRpcId | undefined {
-	const id = message.id;
+	const id = message["id"];
 	if (typeof id === "number" || typeof id === "string" || id === null) return id;
 	return undefined;
 }
 
 function jsonRpcErrorToError(value: unknown): Error {
 	if (!isJsonRpcObject(value)) return new Error("JSON-RPC request failed");
-	const message = typeof value.message === "string" ? value.message : "JSON-RPC request failed";
+	const message = typeof value["message"] === "string" ? value["message"] : "JSON-RPC request failed";
 	const error = new Error(message);
-	if (typeof value.code === "number") {
-		error.name = `JsonRpcError(${value.code})`;
+	if (typeof value["code"] === "number") {
+		error.name = `JsonRpcError(${value["code"]})`;
 	}
 	return error;
 }

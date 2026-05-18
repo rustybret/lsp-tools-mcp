@@ -5,7 +5,7 @@ import { AUTO_INSTALLABLE_SERVERS, BUILTIN_SERVERS, LSP_INSTALL_HINTS } from "..
 describe("BUILTIN_SERVERS", () => {
 	it("#given rust #when looking it up #then maps to rust-analyzer", () => {
 		// given
-		const rust = BUILTIN_SERVERS.rust;
+		const rust = BUILTIN_SERVERS["rust"];
 
 		// when / then
 		expect(rust).toBeDefined();
@@ -15,10 +15,10 @@ describe("BUILTIN_SERVERS", () => {
 
 	it("#given rust install guidance #when inspecting registry #then rust is manual install only", () => {
 		// given
-		const hint = LSP_INSTALL_HINTS.rust;
+		const hint = LSP_INSTALL_HINTS["rust"];
 
 		// when / then
-		expect(AUTO_INSTALLABLE_SERVERS.rust).toBeUndefined();
+		expect(AUTO_INSTALLABLE_SERVERS["rust"]).toBeUndefined();
 		expect(hint).toContain("rust-analyzer");
 		expect(hint).toContain("rustup component add rust-analyzer");
 		expect(hint).toContain("rustup component remove rust-src");

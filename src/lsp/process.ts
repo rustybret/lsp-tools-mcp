@@ -90,7 +90,7 @@ function splitPath(pathValue: string, platform: NodeJS.Platform): string[] {
 }
 
 function getWindowsPathExtensions(env: Record<string, string | undefined>): string[] {
-	const rawExtensions = env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD";
+	const rawExtensions = env["PATHEXT"] ?? ".COM;.EXE;.BAT;.CMD";
 	const extensions = rawExtensions
 		.split(";")
 		.map((extension) => extension.trim())
@@ -101,7 +101,7 @@ function getWindowsPathExtensions(env: Record<string, string | undefined>): stri
 
 function resolveWindowsCommand(command: string, env: Record<string, string | undefined>): string {
 	const hasPathSeparator = command.includes("/") || command.includes("\\");
-	const pathValue = env.PATH ?? env.Path ?? "";
+	const pathValue = env["PATH"] ?? env["Path"] ?? "";
 	const baseDirectories = hasPathSeparator ? [""] : splitPath(pathValue, "win32");
 	const extensions = getWindowsPathExtensions(env);
 
@@ -118,7 +118,7 @@ function resolveWindowsCommand(command: string, env: Record<string, string | und
 export function createSpawnCommand(
 	command: string[],
 	platform: NodeJS.Platform = process.platform,
-	commandProcessor: string = process.env.ComSpec ?? "cmd.exe",
+	commandProcessor: string = process.env["ComSpec"] ?? "cmd.exe",
 	env: Record<string, string | undefined> = process.env,
 ): PreparedSpawnCommand {
 	const [cmd, ...args] = command;
@@ -153,10 +153,15 @@ export function spawnProcess(command: string[], options: SpawnOptions): SpawnedP
 		throw new LspProcessSpawnError("[lsp] empty command");
 	}
 
-	const preparedCommand = createSpawnCommand(command, process.platform, process.env.ComSpec ?? "cmd.exe", options.env);
+	const preparedCommand = createSpawnCommand(
+		command,
+		process.platform,
+		process.env["ComSpec"] ?? "cmd.exe",
+		options.env,
+	);
 	const proc = spawn(preparedCommand.command, preparedCommand.args, {
 		cwd: options.cwd,
-		env: options.env as NodeJS.ProcessEnv,
+		env: options.env,
 		stdio: ["pipe", "pipe", "pipe"],
 		windowsHide: true,
 		shell: preparedCommand.shell,

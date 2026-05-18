@@ -32,7 +32,7 @@ describe("JsonRpcConnection", () => {
 			rootUri: "file:///tmp/project",
 		});
 		const request = await requestMessage;
-		serverOutput.write(encodeMessage({ jsonrpc: "2.0", id: request.id, result: { capabilities: {} } }));
+		serverOutput.write(encodeMessage({ jsonrpc: "2.0", id: request["id"], result: { capabilities: {} } }));
 
 		// then
 		await expect(resultPromise).resolves.toEqual({ capabilities: {} });
