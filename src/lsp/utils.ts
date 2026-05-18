@@ -8,12 +8,6 @@ const RUST_SRC_REPAIR_MESSAGE = [
 	"  rustup component add rust-src",
 ];
 
-export function shorten(value: string, max: number): string {
-	if (value.length <= max) return value;
-	if (max <= 3) return ".".repeat(Math.max(0, max));
-	return `${value.slice(0, max - 3)}...`;
-}
-
 export function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }

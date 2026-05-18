@@ -14,6 +14,15 @@ import type {
 } from "./types.js";
 import type { ApplyResult } from "./workspace-edit.js";
 
+type FilteredSeverity = Exclude<SeverityFilter, "all">;
+
+const DIAGNOSTIC_SEVERITY_FILTERS = {
+	error: 1,
+	warning: 2,
+	information: 3,
+	hint: 4,
+} as const satisfies Readonly<Record<FilteredSeverity, number>>;
+
 export function uriToPath(uri: string): string {
 	return fileURLToPath(uri);
 }
@@ -77,15 +86,7 @@ export function filterDiagnosticsBySeverity(diagnostics: Diagnostic[], severityF
 		return diagnostics;
 	}
 
-	const severityMap: Record<string, number> = {
-		error: 1,
-		warning: 2,
-		information: 3,
-		hint: 4,
-	};
-
-	const targetSeverity = severityMap[severityFilter];
-	if (targetSeverity === undefined) return diagnostics;
+	const targetSeverity = DIAGNOSTIC_SEVERITY_FILTERS[severityFilter];
 	return diagnostics.filter((d) => d.severity === targetSeverity);
 }
 
