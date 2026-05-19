@@ -165,6 +165,17 @@ export const EXT_TO_LANG: Record<string, string> = {
 	".fish": "fish",
 	".graphql": "graphql",
 	".gql": "graphql",
+	".just": "just",
+	".gd": "gdscript",
+	".gdscript": "gdscript",
+	".glsl": "glsl",
+	".vert": "glsl",
+	".frag": "glsl",
+	".geom": "glsl",
+	".tesc": "glsl",
+	".tese": "glsl",
+	".comp": "glsl",
+	".wgsl": "wgsl",
 };
 
 export function getLanguageId(ext: string): string {

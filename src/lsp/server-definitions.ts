@@ -43,6 +43,15 @@ export const LSP_INSTALL_HINTS: Record<string, string> = {
 	"haskell-language-server": "ghcup install hls",
 	bash: "npm install -g bash-language-server",
 	"kotlin-ls": "See https://github.com/Kotlin/kotlin-lsp",
+	just: "brew install terror/tap/just-lsp",
+	"ansible-ls": "npm install -g @ansible/ansible-language-server",
+	gdscript: "bun add -g opencode-godot-lsp",
+	glsl: "See https://github.com/nolanderc/glsl-analyzer",
+	wgsl: "cargo install wgsl_analyzer",
+	lemminx: "See https://github.com/eclipse/lemminx",
+	// cmake-language-server is Python-based; Python subprocess spawning is unstable under Bun (stdio buffering → segfault).
+	// Re-enable once we have a safe subprocess spawn strategy for Python LSPs.
+	// cmake: "brew install cmake-language-server",
 };
 
 export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
@@ -137,6 +146,21 @@ export const BUILTIN_SERVERS: Record<string, Omit<LspServerConfig, "id">> = {
 		extensions: [".hs", ".lhs"],
 	},
 	"kotlin-ls": { command: ["kotlin-lsp"], extensions: [".kt", ".kts"] },
+	just: { command: ["just-lsp"], extensions: [".just"] },
+	"ansible-ls": {
+		command: ["ansible-language-server", "--stdio"],
+		extensions: [".ansible.yml", ".ansible.yaml"],
+	},
+	gdscript: { command: ["opencode-godot-lsp", "--stdio"], extensions: [".gd", ".gdscript"] },
+	glsl: {
+		command: ["glsl_analyzer"],
+		extensions: [".glsl", ".vert", ".frag", ".geom", ".tesc", ".tese", ".comp"],
+	},
+	wgsl: { command: ["wgsl_analyzer"], extensions: [".wgsl"] },
+	lemminx: { command: ["lemminx"], extensions: [".xml", ".xsl"] },
+	// cmake-language-server is Python-based; Python subprocess spawning is unstable under Bun (stdio buffering → segfault).
+	// Re-enable once we have a safe subprocess spawn strategy for Python LSPs.
+	// cmake: { command: ["cmake-language-server"], extensions: [".cmake", "CMakeLists.txt"] },
 };
 
 export const AUTO_INSTALLABLE_SERVERS: Record<string, string[]> = {

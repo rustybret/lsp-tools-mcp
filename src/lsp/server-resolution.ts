@@ -1,7 +1,20 @@
+import { extname } from "path";
+
+import { detectAnsibleFile } from "./ansible-detection.js";
 import { getDisabledServerIds, getMergedServers } from "./config-loader.js";
 import { BUILTIN_SERVERS, LSP_INSTALL_HINTS } from "./server-definitions.js";
 import { isServerInstalled } from "./server-installation.js";
 import type { ServerLookupResult } from "./types.js";
+
+export function findServerForPath(filePath: string): ServerLookupResult {
+	const ext = extname(filePath);
+
+	if ((ext === ".yml" || ext === ".yaml") && detectAnsibleFile(filePath)) {
+		return findServerForExtension(".ansible.yml");
+	}
+
+	return findServerForExtension(ext);
+}
 
 export function findServerForExtension(ext: string): ServerLookupResult {
 	const servers = getMergedServers();
