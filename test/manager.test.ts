@@ -34,6 +34,15 @@ function setupManager(options?: {
 	return { manager, clients, now };
 }
 
+type ProcessSignalListener = (...args: never[]) => unknown;
+
+function findAddedListener(
+	signal: NodeJS.Signals,
+	before: readonly ProcessSignalListener[],
+): ProcessSignalListener | undefined {
+	return process.listeners(signal).find((listener) => !before.includes(listener));
+}
+
 describe("LspManager", () => {
 	it("#given failed start #when later getClient #then failed client is stopped and a fresh client is built", async () => {
 		// given
@@ -87,5 +96,31 @@ describe("LspManager", () => {
 		expect(fresh).toBe(clients[1]);
 
 		await manager.stopAll();
+	});
+
+	it("#given active client #when signal cleanup runs #then client is stopped and handlers unregister", async () => {
+		// given
+		const beforeSigterm = process.listeners("SIGTERM");
+		const { manager, clients } = setupManager();
+		const server = makeServer("typescript");
+
+		try {
+			await manager.getClient("/root/a", server);
+			manager.releaseClient("/root/a", server.id);
+
+			// when
+			const listener = findAddedListener("SIGTERM", beforeSigterm);
+
+			// then
+			expect(listener).toBeDefined();
+			listener?.();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(clients[0]?.stopCallCount).toBe(1);
+			expect(manager.clientCount()).toBe(0);
+			expect(process.listeners("SIGTERM")).toEqual(beforeSigterm);
+		} finally {
+			await manager.stopAll();
+		}
 	});
 });

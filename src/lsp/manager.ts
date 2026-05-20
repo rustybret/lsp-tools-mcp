@@ -1,6 +1,7 @@
 import { reportBestEffortCleanupError } from "./cleanup-errors.js";
 import { LspClient } from "./client.js";
 import { IDLE_TIMEOUT_MS, INIT_TIMEOUT_MS, REAPER_INTERVAL_MS } from "./constants.js";
+import { installProcessSignalCleanup } from "./process-signal-cleanup.js";
 import type { ResolvedServer } from "./types.js";
 
 interface ManagedClient {
@@ -74,7 +75,7 @@ function awaitWithSignal<T>(promise: Promise<T>, signal: AbortSignal | undefined
 export class LspManager {
 	private readonly clients = new Map<string, ManagedClient>();
 	private reaperHandle: NodeJS.Timeout | null = null;
-	private exitDisposer: (() => void) | null = null;
+	private signalDisposer: (() => void) | null = null;
 	private disposed = false;
 
 	private readonly idleTimeoutMs: number;
@@ -91,7 +92,7 @@ export class LspManager {
 		this.now = options.now ?? (() => Date.now());
 
 		this.startReaper();
-		this.installProcessExitHandler();
+		this.signalDisposer = installProcessSignalCleanup(() => this.stopAll());
 	}
 
 	private startReaper(): void {
@@ -102,23 +103,6 @@ export class LspManager {
 		if (typeof this.reaperHandle.unref === "function") {
 			this.reaperHandle.unref();
 		}
-	}
-
-	private installProcessExitHandler(): void {
-		const handler = () => {
-			for (const managed of this.clients.values()) {
-				try {
-					void stopClientBestEffort(managed.client);
-				} catch (error) {
-					reportBestEffortCleanupError("exit handler client stop", error);
-				}
-			}
-			this.clients.clear();
-		};
-		process.on("exit", handler);
-		this.exitDisposer = () => {
-			process.removeListener("exit", handler);
-		};
 	}
 
 	private getKey(root: string, serverId: string): string {
@@ -353,9 +337,9 @@ export class LspManager {
 			this.reaperHandle = null;
 		}
 
-		if (this.exitDisposer) {
-			this.exitDisposer();
-			this.exitDisposer = null;
+		if (this.signalDisposer) {
+			this.signalDisposer();
+			this.signalDisposer = null;
 		}
 
 		const stopPromises: Promise<void>[] = [];
